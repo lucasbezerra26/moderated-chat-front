@@ -47,9 +47,16 @@ export interface MessagesResponse {
   previous?: string
 }
 
+export interface RoomsPageNumberResponse {
+  count: number
+  next: string | null
+  previous: string | null
+  results: Room[]
+}
+
 const chatService = {
-  async getRooms(): Promise<RoomsResponse> {
-    const response = await axiosInstance.get('chat/rooms/')
+  async getRooms(page = 1): Promise<RoomsPageNumberResponse> {
+    const response = await axiosInstance.get('chat/rooms/', { params: { page } })
     return response.data
   },
 
@@ -82,4 +89,3 @@ const chatService = {
 }
 
 export { chatService }
-

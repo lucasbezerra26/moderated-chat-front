@@ -6,26 +6,28 @@ import ProgressSpinner from 'primevue/progressspinner'
 import RoomListItem from '@/components/chat/RoomListItem.vue'
 import ChatRoom from '@/components/chat/ChatRoom.vue'
 import CreateRoomModal from '@/components/chat/CreateRoomModal.vue'
-import { chatService, type Room } from '@/services/chatService'
+import { chatService, type Room, type RoomsPageNumberResponse } from '@/services/chatService'
 
-const rooms = ref<Room[]>([])
+const roomsPage = ref<RoomsPageNumberResponse | null>(null)
 const selectedRoom = ref<Room | null>(null)
 const searchQuery = ref('')
 const isLoading = ref(false)
 const showCreateModal = ref(false)
 const chatRoomRef = ref<InstanceType<typeof ChatRoom> | null>(null)
+const currentPage = ref(1)
 
 const filteredRooms = computed(() => {
-  if (!searchQuery.value) return rooms.value
+  if (!roomsPage.value) return []
+  if (!searchQuery.value) return roomsPage.value.results
   const query = searchQuery.value.toLowerCase()
-  return rooms.value.filter((room) => room.name.toLowerCase().includes(query))
+  return roomsPage.value.results.filter((room) => room.name.toLowerCase().includes(query))
 })
 
-const loadRooms = async () => {
+const loadRooms = async (page = 1) => {
   isLoading.value = true
   try {
-    const response = await chatService.getRooms()
-    rooms.value = response.results || []
+    roomsPage.value = await chatService.getRooms(page)
+    currentPage.value = page
   } finally {
     isLoading.value = false
   }
@@ -36,11 +38,23 @@ const handleRoomSelect = (room: Room) => {
 }
 
 const handleRoomCreated = () => {
-  loadRooms()
+  loadRooms(currentPage.value)
 }
 
 const handleSendMessage = (content: string) => {
   console.log('Enviar mensagem via WebSocket:', content)
+}
+
+const goToNextPage = () => {
+  if (roomsPage.value?.next) {
+    loadRooms(currentPage.value + 1)
+  }
+}
+
+const goToPreviousPage = () => {
+  if (roomsPage.value?.previous && currentPage.value > 1) {
+    loadRooms(currentPage.value - 1)
+  }
 }
 
 onMounted(() => {
@@ -97,6 +111,24 @@ onMounted(() => {
             :room="room"
             :is-active="selectedRoom?.id === room.id"
             @select="handleRoomSelect"
+          />
+        </div>
+        <div v-if="roomsPage && (roomsPage.next || roomsPage.previous)" class="flex justify-between items-center p-2 border-t border-gray-100">
+          <Button
+            label="Anterior"
+            icon="pi pi-angle-left"
+            @click="goToPreviousPage"
+            :disabled="!roomsPage.previous || currentPage === 1"
+            size="small"
+          />
+          <span class="text-xs text-gray-500">Página {{ currentPage }}</span>
+          <Button
+            label="Próxima"
+            icon="pi pi-angle-right"
+            iconPos="right"
+            @click="goToNextPage"
+            :disabled="!roomsPage.next"
+            size="small"
           />
         </div>
       </div>
