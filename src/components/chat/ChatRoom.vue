@@ -5,58 +5,38 @@ import Button from 'primevue/button'
 import Avatar from 'primevue/avatar'
 import ProgressSpinner from 'primevue/progressspinner'
 import ChatMessage from './ChatMessage.vue'
-import { chatService, type Room, type Message } from '@/services/chatService'
+import { type Room } from '@/services/chatService'
+import { useChatMessages } from '@/composables/useChatMessages'
 
-const props = defineProps<{
-  room: Room
-}>()
-
-const emit = defineEmits<{
-  sendMessage: [content: string]
-}>()
+const props = defineProps<{ room: Room }>()
+const emit = defineEmits<{ sendMessage: [content: string] }>()
 
 const messageInput = ref('')
-const messages = ref<Message[]>([])
-const isLoadingHistory = ref(false)
-const isLoadingMore = ref(false)
 const messagesContainer = ref<HTMLElement | null>(null)
-const nextCursor = ref<string | null>(null)
-const previousCursor = ref<string | null>(null)
-const hasMore = ref(true)
 const isConnected = ref(true)
 
-const loadHistory = async () => {
-  isLoadingHistory.value = true
-  try {
-    const response = await chatService.getRoomMessages(props.room.id)
-    messages.value = response.results?.reverse() || []
-    nextCursor.value = response.next || null
-    previousCursor.value = response.previous || null
-    hasMore.value = !!response.next
-  } finally {
-    isLoadingHistory.value = false
-  }
+const {
+  messages,
+  isLoading,
+  isLoadingMore,
+  hasMore,
+  loadInitial,
+  loadMoreMessages,
+  addMessage,
+  updateMessage,
+} = useChatMessages(props.room.id)
+
+const handleSend = () => {
+  const content = messageInput.value.trim()
+  if (!content) return
+  emit('sendMessage', content)
+  messageInput.value = ''
 }
 
-const loadMoreMessages = async () => {
-  if (!nextCursor.value || isLoadingMore.value) return
-  isLoadingMore.value = true
-  const container = messagesContainer.value
-  const oldScrollHeight = container ? container.scrollHeight : 0
-  try {
-    const cursorParam = new URL(nextCursor.value).searchParams.get('cursor')
-    const response = await chatService.getRoomMessages(props.room.id, cursorParam || undefined)
-    const newMessages = response.results?.reverse() || []
-    messages.value = [...newMessages, ...messages.value]
-    nextCursor.value = response.next || null
-    hasMore.value = !!response.next
-    if (container) {
-      nextTick(() => {
-        container.scrollTop = container.scrollHeight - oldScrollHeight
-      })
-    }
-  } finally {
-    isLoadingMore.value = false
+const handleKeydown = (event: KeyboardEvent) => {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault()
+    handleSend()
   }
 }
 
@@ -72,32 +52,11 @@ watch(messages, () => {
   scrollToBottom()
 }, { deep: true })
 
-const handleSend = () => {
-  const content = messageInput.value.trim()
-  if (!content) return
-
-  emit('sendMessage', content)
-  messageInput.value = ''
-}
-
-const handleKeydown = (event: KeyboardEvent) => {
-  if (event.key === 'Enter' && !event.shiftKey) {
-    event.preventDefault()
-    handleSend()
-  }
-}
-
-const addMessage = (message: Message) => {
-  const exists = messages.value.some((m) => m.id === message.id)
-  if (!exists) {
-    messages.value.push(message)
-  }
-}
-
-const updateMessage = (message: Message) => {
-  const index = messages.value.findIndex((m) => m.id === message.id)
-  if (index !== -1) {
-    messages.value[index] = message
+const onScroll = () => {
+  const container = messagesContainer.value
+  if (!container || isLoadingMore.value || isLoading.value) return
+  if (container.scrollTop <= 40 && hasMore.value) {
+    loadMoreMessages(container)
   }
 }
 
@@ -112,16 +71,8 @@ defineExpose({
 })
 
 onMounted(() => {
-  loadHistory()
+  loadInitial()
 })
-
-const onScroll = () => {
-  const container = messagesContainer.value
-  if (!container || isLoadingMore.value || isLoadingHistory.value) return
-  if (container.scrollTop <= 40 && hasMore.value) {
-    loadMoreMessages()
-  }
-}
 </script>
 
 <template>
@@ -156,7 +107,7 @@ const onScroll = () => {
       class="flex-1 overflow-y-auto p-4"
       @scroll="onScroll"
     >
-      <div v-if="isLoadingHistory" class="flex justify-center py-8">
+      <div v-if="isLoading" class="flex justify-center py-8">
         <ProgressSpinner style="width: 40px; height: 40px" />
       </div>
       <div v-else-if="messages.length === 0" class="flex flex-col items-center justify-center h-full text-gray-400">
