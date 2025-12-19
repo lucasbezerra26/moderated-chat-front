@@ -1,0 +1,16 @@
+@import './base.css';
+
+/* Classe global para textos de erro em formulários */
+.custom-label-error {
+  @apply text-red-400;
+}
+
+.p-password-input {
+  width: 100%;
+}
+
+@media (hover: hover) {
+  /*a:hover {*/
+  /*  background-color: hsla(160, 100%, 37%, 0.2);*/
+  /*}*/
+}

@@ -1,0 +1,76 @@
+@import 'tailwindcss';
+
+@plugin "tailwindcss-primeui";
+@import 'primeicons/primeicons.css' layer(utilities);
+@custom-variant dark (&:where(.my-app-dark, .my-app-dark *));
+
+/* Estilos específicos para tooltip - necessários quando tailwindcss-primeui não gera corretamente */
+.p-tooltip {
+  position: absolute;
+  padding: 0.5rem 0.75rem;
+  background-color: #1f2937;
+  color: white;
+  font-size: 0.875rem;
+  border-radius: 0.375rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  max-width: 200px;
+  word-wrap: break-word;
+}
+
+.p-tooltip-arrow {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+.p-tooltip-right .p-tooltip-arrow {
+  left: -0.375rem;
+  border-top: 0.375rem solid transparent;
+  border-bottom: 0.375rem solid transparent;
+  border-right: 0.375rem solid #1f2937;
+}
+
+.p-tooltip-left .p-tooltip-arrow {
+  right: -0.375rem;
+  border-top: 0.375rem solid transparent;
+  border-bottom: 0.375rem solid transparent;
+  border-left: 0.375rem solid #1f2937;
+}
+
+.p-tooltip-top .p-tooltip-arrow {
+  bottom: -0.375rem;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 0.375rem solid transparent;
+  border-right: 0.375rem solid transparent;
+  border-top: 0.375rem solid #1f2937;
+}
+
+.p-tooltip-bottom .p-tooltip-arrow {
+  top: -0.375rem;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 0.375rem solid transparent;
+  border-right: 0.375rem solid transparent;
+  border-bottom: 0.375rem solid #1f2937;
+}
+
+:root {
+  --p-primary-50: #eff6ff;
+  --p-primary-100: #bfcde2;
+  --p-primary-200: #90a4c6;
+  --p-primary-300: #607ba9;
+  --p-primary-400: #31528d;
+  --p-primary-500: #012970;
+  --p-primary-600: #012565;
+  --p-primary-700: #01215a;
+  --p-primary-800: #011d4e;
+  --p-primary-900: #011943;
+  --p-primary-950: #011538;
+  --p-content-border-radius: 6px;
+}
+
+body {
+  background-color: #f6f9ff;
+}
