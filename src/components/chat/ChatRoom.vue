@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, nextTick } from 'vue'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import Avatar from 'primevue/avatar'
@@ -16,9 +16,13 @@ const emit = defineEmits<{
 }>()
 
 const messageInput = ref('')
-const messagesContainer = ref<HTMLElement | null>(null)
-const isLoadingHistory = ref(false)
 const messages = ref<Message[]>([])
+const isLoadingHistory = ref(false)
+const isLoadingMore = ref(false)
+const messagesContainer = ref<HTMLElement | null>(null)
+const nextCursor = ref<string | null>(null)
+const previousCursor = ref<string | null>(null)
+const hasMore = ref(true)
 const isConnected = ref(true)
 
 const loadHistory = async () => {
@@ -26,8 +30,33 @@ const loadHistory = async () => {
   try {
     const response = await chatService.getRoomMessages(props.room.id)
     messages.value = response.results?.reverse() || []
+    nextCursor.value = response.next || null
+    previousCursor.value = response.previous || null
+    hasMore.value = !!response.next
   } finally {
     isLoadingHistory.value = false
+  }
+}
+
+const loadMoreMessages = async () => {
+  if (!nextCursor.value || isLoadingMore.value) return
+  isLoadingMore.value = true
+  const container = messagesContainer.value
+  const oldScrollHeight = container ? container.scrollHeight : 0
+  try {
+    const cursorParam = new URL(nextCursor.value).searchParams.get('cursor')
+    const response = await chatService.getRoomMessages(props.room.id, cursorParam || undefined)
+    const newMessages = response.results?.reverse() || []
+    messages.value = [...newMessages, ...messages.value]
+    nextCursor.value = response.next || null
+    hasMore.value = !!response.next
+    if (container) {
+      nextTick(() => {
+        container.scrollTop = container.scrollHeight - oldScrollHeight
+      })
+    }
+  } finally {
+    isLoadingMore.value = false
   }
 }
 
@@ -85,6 +114,14 @@ defineExpose({
 onMounted(() => {
   loadHistory()
 })
+
+const onScroll = () => {
+  const container = messagesContainer.value
+  if (!container || isLoadingMore.value || isLoadingHistory.value) return
+  if (container.scrollTop <= 40 && hasMore.value) {
+    loadMoreMessages()
+  }
+}
 </script>
 
 <template>
@@ -117,18 +154,20 @@ onMounted(() => {
     <div
       ref="messagesContainer"
       class="flex-1 overflow-y-auto p-4"
+      @scroll="onScroll"
     >
       <div v-if="isLoadingHistory" class="flex justify-center py-8">
         <ProgressSpinner style="width: 40px; height: 40px" />
       </div>
-
       <div v-else-if="messages.length === 0" class="flex flex-col items-center justify-center h-full text-gray-400">
         <i class="pi pi-comments text-4xl mb-2"></i>
         <p>Nenhuma mensagem ainda</p>
         <p class="text-sm">Seja o primeiro a enviar uma mensagem!</p>
       </div>
-
       <template v-else>
+        <div v-if="isLoadingMore" class="flex justify-center py-2">
+          <ProgressSpinner style="width: 24px; height: 24px" />
+        </div>
         <ChatMessage
           v-for="message in messages"
           :key="message.id"
