@@ -1,35 +1,55 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, nextTick } from 'vue'
+import { ref, watch, onUnmounted, onMounted } from 'vue'
+import { useAuthStore } from '@/stores/authStore'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import Avatar from 'primevue/avatar'
 import ProgressSpinner from 'primevue/progressspinner'
 import ChatMessage from './ChatMessage.vue'
 import { type Room } from '@/services/chatService'
-import { useChatMessages } from '@/composables/useChatMessages'
+import { createWebSocketService } from '@/services/websocketService'
+import { chatService } from '@/services/chatService'
+import type { WSChatMessage, WSMessageRejected, WebSocketPayload } from '@/interfaces/websocket'
 
 const props = defineProps<{ room: Room }>()
-const emit = defineEmits<{ sendMessage: [content: string] }>()
 
 const messageInput = ref('')
 const messagesContainer = ref<HTMLElement | null>(null)
-const isConnected = ref(true)
+const isConnected = ref(false)
+const messages = ref<WSChatMessage[]>([])
+const isLoading = ref(false)
+const isLoadingMore = ref(false)
+const rejectedMessage = ref<WSMessageRejected | null>(null)
 
-const {
-  messages,
-  isLoading,
-  isLoadingMore,
-  hasMore,
-  loadInitial,
-  loadMoreMessages,
-  addMessage,
-  updateMessage,
-} = useChatMessages(props.room.id)
+// Instancia o WebSocketService
+const authStore = useAuthStore()
+const wsUrl = `${import.meta.env.VITE_WS_URL || 'ws://localhost:8010/ws/chat/'}${props.room.id}/`
+const token = authStore.accessToken || ''
+const ws = createWebSocketService(wsUrl, token)
+
+ws.on('connect', () => {
+  isConnected.value = true
+})
+ws.on('disconnect', () => {
+  isConnected.value = false
+})
+ws.on('chat_message', (payload: WebSocketPayload) => {
+  if (payload.type === 'chat_message') {
+    messages.value.push(payload.message)
+    messages.value.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+  }
+})
+ws.on('message_rejected', (payload: WebSocketPayload) => {
+  if (payload.type === 'message_rejected') {
+    rejectedMessage.value = payload.message
+    window.alert(`Sua mensagem foi rejeitada: ${payload.message.reason}`)
+  }
+})
 
 const handleSend = () => {
   const content = messageInput.value.trim()
   if (!content) return
-  emit('sendMessage', content)
+  ws.send({ type: 'send_message', content })
   messageInput.value = ''
 }
 
@@ -52,27 +72,25 @@ watch(messages, () => {
   scrollToBottom()
 }, { deep: true })
 
-const onScroll = () => {
-  const container = messagesContainer.value
-  if (!container || isLoadingMore.value || isLoading.value) return
-  if (container.scrollTop <= 40 && hasMore.value) {
-    loadMoreMessages(container)
+const loadInitialMessages = async () => {
+  isLoading.value = true
+  try {
+    const response = await chatService.getRoomMessages(props.room.id)
+    messages.value = response.results || []
+    messages.value.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+  } finally {
+    isLoading.value = false
   }
 }
 
-const setConnected = (connected: boolean) => {
-  isConnected.value = connected
-}
-
-defineExpose({
-  addMessage,
-  updateMessage,
-  setConnected,
-})
-
 onMounted(() => {
-  loadInitial()
+  loadInitialMessages()
 })
+
+onUnmounted(() => {
+  ws.close()
+})
+
 </script>
 
 <template>
@@ -105,7 +123,6 @@ onMounted(() => {
     <div
       ref="messagesContainer"
       class="flex-1 overflow-y-auto p-4"
-      @scroll="onScroll"
     >
       <div v-if="isLoading" class="flex justify-center py-8">
         <ProgressSpinner style="width: 40px; height: 40px" />
