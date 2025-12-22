@@ -13,6 +13,7 @@ import type { WSChatMessage, WSMessageRejected, WebSocketPayload } from '@/inter
 
 const props = defineProps<{ room: Room }>()
 
+const authStore = useAuthStore()
 const messageInput = ref('')
 const messagesContainer = ref<HTMLElement | null>(null)
 const isConnected = ref(false)
@@ -31,15 +32,44 @@ ws.on('connect', () => {
 ws.on('disconnect', () => {
   isConnected.value = false
 })
+const addOrUpdateMessage = (newMessage: WSChatMessage) => {
+  const index = messages.value.findIndex((m) => m.id === newMessage.id)
+  if (index !== -1) {
+    messages.value[index] = { ...messages.value[index], ...newMessage }
+  } else {
+    messages.value.push(newMessage)
+  }
+  messages.value.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+}
+
 ws.on('chat_message', (payload: WebSocketPayload) => {
   if (payload.type === 'chat_message') {
-    messages.value.push(payload.message)
-    messages.value.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+    addOrUpdateMessage(payload.message)
+  }
+})
+ws.on('message_queued', (payload: WebSocketPayload) => {
+  if (payload.type === 'message_queued') {
+    const message = { ...payload.message }
+    if (!message.author && authStore.user) {
+      message.author = {
+        id: authStore.user.id,
+        name: authStore.user.name,
+        email: authStore.user.email,
+      }
+    }
+    addOrUpdateMessage(message)
   }
 })
 ws.on('message_rejected', (payload: WebSocketPayload) => {
   if (payload.type === 'message_rejected') {
     rejectedMessage.value = payload.message
+    const index = messages.value.findIndex((m) => m.id === payload.message.id)
+    if (index !== -1) {
+      messages.value[index] = {
+        ...messages.value[index],
+        status: 'REJECTED',
+      }
+    }
     window.alert(`Sua mensagem foi rejeitada: ${payload.message.reason}`)
   }
 })

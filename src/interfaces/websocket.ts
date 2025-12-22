@@ -19,6 +19,7 @@ export interface WSMessageRejected {
 
 export type WebSocketEventType =
   | 'chat_message'
+  | 'message_queued'
   | 'message_rejected'
   | 'connect'
   | 'disconnect'
@@ -26,6 +27,7 @@ export type WebSocketEventType =
 
 export type WebSocketPayload =
   | { type: 'chat_message'; message: WSChatMessage }
+  | { type: 'message_queued'; message: WSChatMessage }
   | { type: 'message_rejected'; message: WSMessageRejected }
   | { type: 'connect' }
   | { type: 'disconnect' }

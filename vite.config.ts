@@ -34,7 +34,6 @@ export default defineConfig({
       },
       [`^/ws`]: {
         target: VITE_WS_URL,
-        // ws: true,
         changeOrigin: true,
       },
     },
