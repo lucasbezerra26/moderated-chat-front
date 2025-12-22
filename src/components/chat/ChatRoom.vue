@@ -5,6 +5,7 @@ import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import Avatar from 'primevue/avatar'
 import ProgressSpinner from 'primevue/progressspinner'
+import Dialog from 'primevue/dialog'
 import ChatMessage from './ChatMessage.vue'
 import { type Room } from '@/services/chatService'
 import { createWebSocketService } from '@/services/websocketService'
@@ -21,6 +22,7 @@ const messages = ref<WSChatMessage[]>([])
 const isLoading = ref(false)
 const isLoadingMore = ref(false)
 const rejectedMessage = ref<WSMessageRejected | null>(null)
+const showRejectedModal = ref(false)
 
 // Instancia o WebSocketService
 const wsUrl = `ws://${window.location.host}/ws/chat/${props.room.id}/`
@@ -70,7 +72,7 @@ ws.on('message_rejected', (payload: WebSocketPayload) => {
         status: 'REJECTED',
       }
     }
-    window.alert(`Sua mensagem foi rejeitada: ${payload.message.reason}`)
+    showRejectedModal.value = true
   }
 })
 
@@ -194,5 +196,36 @@ onUnmounted(() => {
       </p>
     </div>
   </div>
+
+  <Dialog
+    v-model:visible="showRejectedModal"
+    modal
+    header="Mensagem Rejeitada"
+    :style="{ width: '400px' }"
+    :breakpoints="{ '960px': '75vw', '641px': '90vw' }"
+  >
+    <div class="flex flex-col gap-4">
+      <div class="flex items-center gap-3 text-red-600">
+        <i class="pi pi-exclamation-triangle text-2xl"></i>
+        <span class="font-semibold">Sua mensagem não pôde ser enviada.</span>
+      </div>
+
+      <div v-if="rejectedMessage" class="bg-gray-50 p-3 rounded border border-gray-200">
+        <p class="text-sm text-gray-500 mb-1 font-medium uppercase tracking-wider">Conteúdo:</p>
+        <p class="text-gray-700 italic">"{{ rejectedMessage.content }}"</p>
+      </div>
+
+      <div v-if="rejectedMessage" class="flex flex-col gap-1">
+        <p class="text-sm font-medium text-gray-900">Motivo da rejeição:</p>
+        <p class="text-sm text-gray-600 bg-red-50 p-2 rounded border border-red-100">
+          {{ rejectedMessage.reason }}
+        </p>
+      </div>
+    </div>
+
+    <template #footer>
+      <Button label="Entendi" icon="pi pi-check" @click="showRejectedModal = false" autofocus />
+    </template>
+  </Dialog>
 </template>
 
