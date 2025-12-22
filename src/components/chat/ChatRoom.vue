@@ -22,10 +22,8 @@ const isLoadingMore = ref(false)
 const rejectedMessage = ref<WSMessageRejected | null>(null)
 
 // Instancia o WebSocketService
-const authStore = useAuthStore()
-const wsUrl = `${import.meta.env.VITE_WS_URL || 'ws://localhost:8010/ws/chat/'}${props.room.id}/`
-const token = authStore.accessToken || ''
-const ws = createWebSocketService(wsUrl, token)
+const wsUrl = `ws://${window.location.host}/ws/chat/${props.room.id}/`
+const ws = createWebSocketService(wsUrl)
 
 ws.on('connect', () => {
   isConnected.value = true
@@ -49,7 +47,7 @@ ws.on('message_rejected', (payload: WebSocketPayload) => {
 const handleSend = () => {
   const content = messageInput.value.trim()
   if (!content) return
-  ws.send({ type: 'send_message', content })
+  ws.send({ type: 'chat_message', message: content })
   messageInput.value = ''
 }
 
@@ -85,6 +83,7 @@ const loadInitialMessages = async () => {
 
 onMounted(() => {
   loadInitialMessages()
+  ws.connect()
 })
 
 onUnmounted(() => {

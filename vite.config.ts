@@ -9,6 +9,7 @@ import tailwindcss from '@tailwindcss/vite'
 dotenv.config()
 
 const VITE_CLIENT_URL = process.env.VITE_CLIENT_URL || ''
+const VITE_WS_URL = process.env.VITE_WS_URL || ''
 
 export default defineConfig({
   resolve: {
@@ -29,6 +30,11 @@ export default defineConfig({
     proxy: {
       [`^/api`]: {
         target: VITE_CLIENT_URL,
+        changeOrigin: true,
+      },
+      [`^/ws`]: {
+        target: VITE_WS_URL,
+        // ws: true,
         changeOrigin: true,
       },
     },

@@ -8,17 +8,17 @@ class WebSocketService {
   private listeners: Partial<Record<WebSocketEventType, WebSocketListener[]>> = {}
   private reconnectTimeout: number = 3000
   private url: string
-  private token: string
   private isConnected = false
   private reconnecting = false
 
-  constructor(url: string, token: string) {
+  constructor(url: string) {
     this.url = url
-    this.token = token
   }
 
   connect() {
-    this.ws = new WebSocket(`${this.url}?token=${this.token}`)
+    const authStore = useAuthStore()
+    const token = authStore.accessToken || ''
+    this.ws = new WebSocket(`${this.url}?token=${token}`)
     this.ws.onopen = () => {
       this.isConnected = true
       this.emit('connect', { type: 'connect' })
@@ -80,7 +80,6 @@ class WebSocketService {
   }
 }
 
-export function createWebSocketService(url: string, token: string) {
-  return new WebSocketService(url, token)
+export function createWebSocketService(url: string) {
+  return new WebSocketService(url)
 }
-
