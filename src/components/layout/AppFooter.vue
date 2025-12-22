@@ -5,7 +5,7 @@
     <img src="/src/assets/img/logo.png" alt="Logo" class="h-5 mr-2" />
     <span class="font-medium ml-2 text-primary-800">
       <span class="text-surface-600">&copy; Copyright</span>
-      <span> PAVIC/LAPEDONE - Picos</span>
+      <span> L Bezerra Dev</span>
     </span>
     <span class="text-surface-600 ml-2">Todos os direitos reservados</span>
   </footer>
