@@ -8,7 +8,7 @@ import ProgressSpinner from 'primevue/progressspinner'
 import Dialog from 'primevue/dialog'
 import ChatMessage from './ChatMessage.vue'
 import { type Room, type RoomDetail, chatService } from '@/services/chatService'
-import { createWebSocketService } from '@/services/websocketService'
+import { useChatWebSocket } from '@/composables/useChatWebSocket'
 import type { WSChatMessage, WSMessageRejected, WebSocketPayload } from '@/interfaces/websocket'
 import Popover from 'primevue/popover'
 
@@ -17,34 +17,26 @@ const props = defineProps<{ room: Room }>()
 const authStore = useAuthStore()
 const messageInput = ref('')
 const messagesContainer = ref<HTMLElement | null>(null)
-const isConnected = ref(false)
 const messages = ref<WSChatMessage[]>([])
 const isLoading = ref(false)
 const isLoadingMore = ref(false)
 const rejectedMessage = ref<WSMessageRejected | null>(null)
 const showRejectedModal = ref(false)
 const roomDetail = ref<RoomDetail | null>(null)
+
+const { isConnected, connectionError, sendMessage: wsSendMessage, on, off } = useChatWebSocket(props.room.id)
+
 const isAdmin = computed(() => {
   if (!roomDetail.value || !authStore.user) return false
   return roomDetail.value.participants.some(
     (p) => p.user.id === authStore.user!.id && p.role === 'ADMIN'
   )
 })
+
 const participantsPopover = ref()
 const toggleParticipants = (event: Event) => {
   participantsPopover.value.toggle(event)
 }
-
-// Instancia o WebSocketService
-const wsUrl = `ws://${window.location.host}/ws/chat/${props.room.id}/`
-const ws = createWebSocketService(wsUrl)
-
-ws.on('connect', () => {
-  isConnected.value = true
-})
-ws.on('disconnect', () => {
-  isConnected.value = false
-})
 const addOrUpdateMessage = (newMessage: WSChatMessage) => {
   const index = messages.value.findIndex((m) => m.id === newMessage.id)
   if (index !== -1) {
@@ -55,42 +47,49 @@ const addOrUpdateMessage = (newMessage: WSChatMessage) => {
   messages.value.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
 }
 
-ws.on('chat_message', (payload: WebSocketPayload) => {
-  if (payload.type === 'chat_message') {
-    addOrUpdateMessage(payload.message)
-  }
-})
-ws.on('message_queued', (payload: WebSocketPayload) => {
-  if (payload.type === 'message_queued') {
-    const message = { ...payload.message }
-    if (!message.author && authStore.user) {
-      message.author = {
-        id: authStore.user.id,
-        name: authStore.user.name,
-        email: authStore.user.email,
-      }
+onMounted(() => {
+  on('chat_message', (payload: WebSocketPayload) => {
+    if (payload.type === 'chat_message') {
+      addOrUpdateMessage(payload.message)
     }
-    addOrUpdateMessage(message)
-  }
-})
-ws.on('message_rejected', (payload: WebSocketPayload) => {
-  if (payload.type === 'message_rejected') {
-    rejectedMessage.value = payload.message
-    const index = messages.value.findIndex((m) => m.id === payload.message.id)
-    if (index !== -1) {
-      messages.value[index] = {
-        ...messages.value[index],
-        status: 'REJECTED',
+  })
+
+  on('message_queued', (payload: WebSocketPayload) => {
+    if (payload.type === 'message_queued') {
+      const message = { ...payload.message }
+      if (!message.author && authStore.user) {
+        message.author = {
+          id: authStore.user.id,
+          name: authStore.user.name,
+          email: authStore.user.email,
+        }
       }
+      addOrUpdateMessage(message)
     }
-    showRejectedModal.value = true
-  }
+  })
+
+  on('message_rejected', (payload: WebSocketPayload) => {
+    if (payload.type === 'message_rejected') {
+      rejectedMessage.value = payload.message
+      const index = messages.value.findIndex((m) => m.id === payload.message.id)
+      if (index !== -1) {
+        messages.value[index] = {
+          ...messages.value[index],
+          status: 'REJECTED',
+        }
+      }
+      showRejectedModal.value = true
+    }
+  })
+
+  loadInitialMessages()
+  loadRoomDetail()
 })
 
 const handleSend = () => {
   const content = messageInput.value.trim()
-  if (!content) return
-  ws.send({ type: 'chat_message', message: content })
+  if (!content || !isConnected.value) return
+  wsSendMessage(content)
   messageInput.value = ''
 }
 
@@ -128,15 +127,6 @@ const loadRoomDetail = async () => {
   roomDetail.value = await chatService.getRoomDetail(props.room.id)
 }
 
-onMounted(() => {
-  loadInitialMessages()
-  loadRoomDetail()
-  ws.connect()
-})
-
-onUnmounted(() => {
-  ws.close()
-})
 
 watch(
   () => props.room.id,
@@ -239,6 +229,10 @@ watch(
     </div>
 
     <div class="border-t border-gray-200 p-4">
+      <div v-if="connectionError" class="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-sm text-red-700">
+        <i class="pi pi-exclamation-circle"></i>
+        <span>{{ connectionError }}</span>
+      </div>
       <div class="flex gap-2">
         <InputText
           v-model="messageInput"

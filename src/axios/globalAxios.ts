@@ -65,8 +65,8 @@ axiosInstance.interceptors.response.use(
       isRefreshing = true
 
       try {
-        if (authStore.refreshToken) {
-          const success = await authStore.refreshAccessToken()
+        if (authStore.hasRefreshToken) {
+          const success = await authStore.refreshToken()
 
           if (success && authStore.accessToken) {
             processQueue(null, authStore.accessToken)

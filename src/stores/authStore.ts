@@ -17,7 +17,7 @@ interface JWTPayload {
 
 export const useAuthStore = defineStore('auth', () => {
   const accessToken = ref<string | null>(null)
-  const refreshToken = ref<string | null>(null)
+  const refreshTokenValue = ref<string | null>(null)
   const user = ref<User | null>(null)
   const isLoading = ref(false)
   const error = ref<string | null>(null)
@@ -41,13 +41,28 @@ export const useAuthStore = defineStore('auth', () => {
     }
   })
 
+  const checkTokenValidity = (): boolean => {
+    if (!accessToken.value) return false
+
+    try {
+      const decoded = jwtDecode<JWTPayload>(accessToken.value)
+      const now = Date.now() / 1000
+      const bufferTime = 60
+      return decoded.exp > now + bufferTime
+    } catch {
+      return false
+    }
+  }
+
+  const hasRefreshToken = computed(() => !!refreshTokenValue.value)
+
   watch(
-    [accessToken, refreshToken, user],
+    [accessToken, refreshTokenValue, user],
     () => {
-      if (accessToken.value && refreshToken.value) {
+      if (accessToken.value && refreshTokenValue.value) {
         const dataToStore = {
           accessToken: accessToken.value,
-          refreshToken: refreshToken.value,
+          refreshToken: refreshTokenValue.value,
           user: user.value,
         }
         localStorage.setItem('auth-store', JSON.stringify(dataToStore))
@@ -60,7 +75,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   const setTokens = (access: string, refresh: string) => {
     accessToken.value = access
-    refreshToken.value = refresh
+    refreshTokenValue.value = refresh
   }
 
   const setUser = (userData: User) => {
@@ -69,7 +84,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   const clearAuthData = () => {
     accessToken.value = null
-    refreshToken.value = null
+    refreshTokenValue.value = null
     user.value = null
     error.value = null
     localStorage.removeItem('auth-store')
@@ -114,10 +129,10 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const refreshAccessToken = async (): Promise<boolean> => {
-    if (!refreshToken.value) return false
+    if (!refreshTokenValue.value) return false
 
     try {
-      const newAccessToken = await authService.refreshToken(refreshToken.value)
+      const newAccessToken = await authService.refreshToken(refreshTokenValue.value)
 
       if (newAccessToken) {
         accessToken.value = newAccessToken
@@ -136,10 +151,10 @@ export const useAuthStore = defineStore('auth', () => {
       if (storedData) {
         const parsed = JSON.parse(storedData)
         accessToken.value = parsed.accessToken
-        refreshToken.value = parsed.refreshToken
+        refreshTokenValue.value = parsed.refreshToken
         user.value = parsed.user
 
-        if (isTokenExpired.value && refreshToken.value) {
+        if (isTokenExpired.value && refreshTokenValue.value) {
           const success = await refreshAccessToken()
           if (!success) {
             clearAuthData()
@@ -153,16 +168,17 @@ export const useAuthStore = defineStore('auth', () => {
 
   return {
     accessToken,
-    refreshToken,
     user,
     isLoading,
     error,
     isAuthenticated,
     userDisplayName,
     isTokenExpired,
+    hasRefreshToken,
+    checkTokenValidity,
     login,
     logout,
-    refreshAccessToken,
+    refreshToken: refreshAccessToken,
     initializeAuth,
     setUser,
     clearAuthData,
