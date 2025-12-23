@@ -40,6 +40,36 @@ const statusConfig = computed(() => {
   }
   return configs[props.message.status]
 })
+
+const getAuthorColor = computed(() => {
+  const colors = [
+    'bg-blue-500',
+    'bg-green-500',
+    'bg-purple-500',
+    'bg-pink-500',
+    'bg-orange-500',
+    'bg-teal-500',
+    'bg-indigo-500',
+    'bg-red-500',
+  ]
+  const hash = props.message.author.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
+  return colors[hash % colors.length]
+})
+
+const getAuthorNameColor = computed(() => {
+  const colors = [
+    'text-blue-600',
+    'text-green-600',
+    'text-purple-600',
+    'text-pink-600',
+    'text-orange-600',
+    'text-teal-600',
+    'text-indigo-600',
+    'text-red-600',
+  ]
+  const hash = props.message.author.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
+  return colors[hash % colors.length]
+})
 </script>
 
 <template>
@@ -50,23 +80,23 @@ const statusConfig = computed(() => {
     <Avatar
       :label="authorInitials"
       shape="circle"
-      :class="isOwnMessage ? 'bg-blue-500' : 'bg-gray-400'"
+      :class="isOwnMessage ? 'bg-blue-500' : getAuthorColor"
       class="text-white flex-shrink-0"
     />
 
     <div
-      class="max-w-[70%] rounded-lg p-3"
+      class="max-w-[70%] rounded-lg p-3 shadow-sm"
       :class="{
         'bg-blue-500 text-white': isOwnMessage,
-        'bg-gray-100 text-gray-900': !isOwnMessage,
+        'bg-white text-gray-900': !isOwnMessage,
         'opacity-60': message.status === 'PENDING',
         'line-through opacity-50': message.status === 'REJECTED',
       }"
     >
       <div
         v-if="!isOwnMessage"
-        class="text-xs font-medium mb-1"
-        :class="isOwnMessage ? 'text-blue-100' : 'text-gray-600'"
+        class="text-xs font-semibold mb-1"
+        :class="getAuthorNameColor"
       >
         {{ message.author.name }}
       </div>
@@ -76,7 +106,7 @@ const statusConfig = computed(() => {
       <div class="flex items-center justify-end gap-2 mt-1">
         <span
           class="text-xs"
-          :class="isOwnMessage ? 'text-blue-100' : 'text-gray-400'"
+          :class="isOwnMessage ? 'text-blue-100' : 'text-gray-500'"
         >
           {{ formattedTime }}
         </span>
