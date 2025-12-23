@@ -4,16 +4,13 @@ import Toolbar from 'primevue/toolbar'
 import Button from 'primevue/button'
 import Avatar from 'primevue/avatar'
 import { ref, inject } from 'vue'
-import { useLayout } from '@/components/ui/sidecar/composables/layout'
 import { useAuthStore } from '@/stores/authStore'
 import { useRouter } from 'vue-router'
 
-const { onMenuToggle } = useLayout()
 const authStore = useAuthStore()
 const router = useRouter()
 const popoverRef = ref()
 
-// Usar a variável global do sistema
 const appName = inject<string>('appName', 'Moderated Chat')
 
 const togglePopover = (event: Event) => {
@@ -72,14 +69,6 @@ const getUserInitials = () => {
         <div class="flex items-center justify-center gap-2">
           <img src="/src/assets/img/logo.png" alt="Logo" class="h-6" />
           <span class="font-semibold text-2xl text-primary-500">{{ appName }}</span>
-        </div>
-        <div class="flex items-center justify-center gap-2 ml-5">
-          <button
-            class="ml-2 transition-colors layout-menu-button flex items-center justify-center"
-            @click="onMenuToggle()"
-          >
-            <i class="pi pi-bars text-primary-500 text-2xl flex items-center justify-center"></i>
-          </button>
         </div>
       </template>
 
@@ -164,14 +153,3 @@ const getUserInitials = () => {
   </div>
 </template>
 
-<style scoped>
-.layout-menu-button {
-  cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 0.375rem;
-}
-
-.layout-menu-button:hover {
-  background-color: rgb(var(--p-primary-500) / 0.1);
-}
-</style>

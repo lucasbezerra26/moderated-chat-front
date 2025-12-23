@@ -10,11 +10,7 @@ declare module 'vue' {
     AppFooter: typeof import('./src/components/layout/AppFooter.vue')['default']
     AppLayout: typeof import('./src/components/layout/AppLayout.vue')['default']
     AppLayoutDefault: typeof import('./src/components/layout/AppLayoutDefault.vue')['default']
-    AppMenuItem: typeof import('./src/components/ui/sidecar/AppMenuItem.vue')['default']
-    AppPageHeader: typeof import('./src/components/layout/AppPageHeader.vue')['default']
-    AppSidebar: typeof import('./src/components/ui/sidecar/AppSidebar.vue')['default']
     AppTopbar: typeof import('./src/components/layout/AppTopbar.vue')['default']
-    Button: typeof import('primevue/button')['default']
     ChatMessage: typeof import('./src/components/chat/ChatMessage.vue')['default']
     ChatRoom: typeof import('./src/components/chat/ChatRoom.vue')['default']
     CreateRoomModal: typeof import('./src/components/chat/CreateRoomModal.vue')['default']
@@ -23,8 +19,6 @@ declare module 'vue' {
     RouterView: typeof import('vue-router')['RouterView']
   }
   export interface ComponentCustomProperties {
-    Popover: typeof import('primevue/popover')['default']
-    Ripple: typeof import('primevue/ripple')['default']
     Tooltip: typeof import('primevue/tooltip')['default']
   }
 }
