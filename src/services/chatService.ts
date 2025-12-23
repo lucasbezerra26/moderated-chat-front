@@ -54,6 +54,21 @@ export interface RoomsPageNumberResponse {
   results: Room[]
 }
 
+export interface RoomDetail extends Room {
+  participants: RoomParticipant[]
+  participants_count: number
+}
+
+export interface AddParticipantData {
+  user_id: string
+}
+
+export interface UpdateRoomData {
+  name?: string
+  is_private?: boolean
+  participants?: string[]
+}
+
 const chatService = {
   async getRooms(page = 1): Promise<RoomsPageNumberResponse> {
     const response = await axiosInstance.get('chat/rooms/', { params: { page } })
@@ -76,6 +91,11 @@ const chatService = {
     return response.data
   },
 
+  async getRoomDetail(roomId: string): Promise<RoomDetail> {
+    const response = await axiosInstance.get(`chat/rooms/${roomId}/`)
+    return response.data
+  },
+
   async addParticipant(roomId: string, userId: string): Promise<RoomParticipant> {
     const response = await axiosInstance.post(`chat/rooms/${roomId}/participants/`, {
       user_id: userId,
@@ -85,6 +105,16 @@ const chatService = {
 
   async removeParticipant(roomId: string, userId: string): Promise<void> {
     await axiosInstance.delete(`chat/rooms/${roomId}/participants/${userId}/`)
+  },
+
+  async updateRoom(roomId: string, data: UpdateRoomData): Promise<RoomDetail> {
+    const response = await axiosInstance.patch(`chat/rooms/${roomId}/`, data)
+    return response.data
+  },
+
+  async getUsers(): Promise<Author[]> {
+    const response = await axiosInstance.get('auth/users/')
+    return response.data.results
   },
 }
 

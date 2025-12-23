@@ -41,9 +41,6 @@ const handleRoomCreated = () => {
   loadRooms(currentPage.value)
 }
 
-const handleSendMessage = (content: string) => {
-  console.log('Enviar mensagem via WebSocket:', content)
-}
 
 const goToNextPage = () => {
   if (roomsPage.value?.next) {
@@ -146,7 +143,6 @@ onMounted(() => {
           ref="chatRoomRef"
           :room="selectedRoom"
           :key="selectedRoom.id"
-          @send-message="handleSendMessage"
         />
       </div>
     </div>

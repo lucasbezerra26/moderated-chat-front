@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onUnmounted, onMounted } from 'vue'
+import { ref, watch, onUnmounted, onMounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
@@ -7,10 +7,10 @@ import Avatar from 'primevue/avatar'
 import ProgressSpinner from 'primevue/progressspinner'
 import Dialog from 'primevue/dialog'
 import ChatMessage from './ChatMessage.vue'
-import { type Room } from '@/services/chatService'
+import { type Room, type RoomDetail, chatService } from '@/services/chatService'
 import { createWebSocketService } from '@/services/websocketService'
-import { chatService } from '@/services/chatService'
 import type { WSChatMessage, WSMessageRejected, WebSocketPayload } from '@/interfaces/websocket'
+import Popover from 'primevue/popover'
 
 const props = defineProps<{ room: Room }>()
 
@@ -23,6 +23,17 @@ const isLoading = ref(false)
 const isLoadingMore = ref(false)
 const rejectedMessage = ref<WSMessageRejected | null>(null)
 const showRejectedModal = ref(false)
+const roomDetail = ref<RoomDetail | null>(null)
+const isAdmin = computed(() => {
+  if (!roomDetail.value || !authStore.user) return false
+  return roomDetail.value.participants.some(
+    (p) => p.user.id === authStore.user!.id && p.role === 'ADMIN'
+  )
+})
+const participantsPopover = ref()
+const toggleParticipants = (event: Event) => {
+  participantsPopover.value.toggle(event)
+}
 
 // Instancia o WebSocketService
 const wsUrl = `ws://${window.location.host}/ws/chat/${props.room.id}/`
@@ -113,8 +124,13 @@ const loadInitialMessages = async () => {
   }
 }
 
+const loadRoomDetail = async () => {
+  roomDetail.value = await chatService.getRoomDetail(props.room.id)
+}
+
 onMounted(() => {
   loadInitialMessages()
+  loadRoomDetail()
   ws.connect()
 })
 
@@ -122,6 +138,12 @@ onUnmounted(() => {
   ws.close()
 })
 
+watch(
+  () => props.room.id,
+  () => {
+    loadRoomDetail()
+  }
+)
 </script>
 
 <template>
@@ -138,6 +160,7 @@ onUnmounted(() => {
         <h2 class="font-semibold text-gray-900 flex items-center gap-2">
           {{ room.name }}
           <i v-if="room.is_private" class="pi pi-lock text-purple-600 text-sm"></i>
+          <span v-if="isAdmin" class="ml-2 px-2 py-1 bg-green-100 text-green-700 rounded text-xs">Admin</span>
         </h2>
       </div>
       <div class="flex items-center gap-2">
@@ -149,6 +172,46 @@ onUnmounted(() => {
           {{ isConnected ? 'Conectado' : 'Desconectado' }}
         </span>
       </div>
+      <Button
+        type="button"
+        icon="pi pi-users"
+        class="p-button-rounded p-button-text text-blue-600"
+        @click="toggleParticipants"
+        v-tooltip.bottom="'Ver participantes'"
+      />
+
+      <Popover ref="participantsPopover">
+        <div class="flex flex-col gap-2 p-3 min-w-[280px]">
+          <span class="font-medium text-sm text-gray-700 mb-1 px-2">Participantes</span>
+          <div v-if="roomDetail" class="flex flex-col gap-1">
+            <div
+              v-for="participant in roomDetail.participants"
+              :key="participant.user.id"
+              class="flex items-center gap-2 px-2 py-2 hover:bg-gray-50 rounded transition-colors"
+            >
+              <Avatar
+                :label="participant.user.name.charAt(0).toUpperCase()"
+                size="normal"
+                shape="circle"
+                class="bg-blue-500 text-white"
+              />
+              <div class="flex-1">
+                <div class="font-semibold text-sm text-gray-800">{{ participant.user.name }}</div>
+                <div class="text-xs text-gray-500">{{ participant.user.email }}</div>
+              </div>
+              <span
+                v-if="participant.role === 'ADMIN'"
+                class="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-medium"
+              >
+                Admin
+              </span>
+            </div>
+          </div>
+          <div v-else class="text-sm text-gray-500 py-2 px-2">
+            Carregando participantes...
+          </div>
+        </div>
+      </Popover>
     </div>
 
     <div
