@@ -5,7 +5,7 @@ import type { WebSocketPayload } from '@/interfaces/websocket'
 
 export function useChatWebSocket(roomId: string) {
   const authStore = useAuthStore()
-  const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8000'
+  const wsUrl = import.meta.env.VITE_WS_URL || 'wss://4.155.72.118'
   const ws = createWebSocketService(`${wsUrl}/ws/chat/${roomId}/`)
 
   const isConnected = ref(false)
